@@ -31,7 +31,7 @@ utils/                     helper scripts from p4lang/tutorials (Apache-2.0, see
 - P4 compiler (`p4c`) 1.2.4.14
 - Python 3 with scapy 2.5.0
 
-A preconfigured VM with the toolchain is available [here](https://drive.google.com/file/d/1mUspxxo7sG0-omvnu6IJasKKSP0PVbCj/view).
+A preconfigured VM with the toolchain is available [here](https://drive.google.com/file/d/14DI0Ovnn2eo3boFewWHg83xnhtF1jKjK/view).
 
 ## Running
 

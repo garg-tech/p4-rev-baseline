@@ -1,72 +1,108 @@
-# Rule Enforcement Verification (REV)
+# REV — Rule Enforcement Verification in P4
 
-> This enables the controller to verify if the rules that it issued have been properly enforced.
+An independent P4/BMv2 implementation of **REV**, proposed in:
 
-## Table of Contents
-* [General Info](#general-information)
-* [Technologies Used](#technologies-used)
-* [How To Run?](#how-to-run)
-* [Test Results](#test-results)
-* [Contact](#contact)
+> P. Zhang, H. Wu, D. Zhang and Q. Li, "Verifying rule enforcement in software defined networks with REV," *IEEE/ACM Transactions on Networking*, vol. 28, no. 2, pp. 917–929, 2020.
 
-## General Information
+The algorithm is theirs; this implementation is mine.
 
-The main goal of this is to prevent attacks on a network like Path Deviation and Unauthorized Access. Implemented this in a BMV2 environment.
+It lets an SDN controller verify that the forwarding rules it installed are actually being enforced by the switches, detecting **path deviation** and **unauthorized access** at runtime. The implementation is evaluated across topologies of 2 to 32 switches.
 
-## Technologies Used
+---
 
-* scapy - 2.5.0
-* p4 compiler - 1.2.4.14 ([Download VM here](https://drive.google.com/file/d/1mUspxxo7sG0-omvnu6IJasKKSP0PVbCj/view))
+## Repository layout
 
-## How To Run?
+```
+rev/
+├── s1.p4 … s32.p4         P4 programs, one per switch
+├── controller.py          controller: installs rules and verifies enforcement
+├── send.py / receive.py   host-side traffic generation and capture
+├── keys.json, 32_keys.json
+├── topologies/            topo2, topo4, topo6, topo8, topo10, topo16, topo32
+├── Makefile
+├── disable_ipv6.sh, clean.sh
+└── Performance-Analysis-of-REV.png
+utils/                     helper scripts from p4lang/tutorials (Apache-2.0, see below)
+```
 
-1. Clone the repository.
-2. CD into **rev** directory.
-3. Run the following commands:
+## Requirements
+
+- BMv2 (`simple_switch_grpc`) and Mininet
+- P4 compiler (`p4c`) 1.2.4.14
+- Python 3 with scapy 2.5.0
+
+A preconfigured VM with the toolchain is available [here](https://drive.google.com/file/d/1mUspxxo7sG0-omvnu6IJasKKSP0PVbCj/view).
+
+## Running
+
+1. Clone the repository and change into `rev/`:
+   ```bash
+   git clone https://github.com/garg-tech/p4-rev-baseline.git
+   cd p4-rev-baseline/rev
    ```
-       $./disable_ipv6.sh
-       $make run TOPO_DIR=<topology directory path>
+2. Disable IPv6 and start the network (default topology: `topologies/topo4`):
+   ```bash
+   ./disable_ipv6.sh
+   make run TOPO_DIR=topologies/topo4
    ```
-   By default, **TOPO_DIR = topologies/topo4/**
-   
-4. When the mininet is up, run the following command:
+3. From the Mininet prompt, open terminals on the first and last hosts, where `n` is the highest-numbered switch in the topology:
    ```
-       mininet> xterm h1 h<n>
+   mininet> xterm h1 hn
    ```
-   where *n = highest number of switch you have in the topology*
-   
-5. Open a new terminal and run the following command:
+4. In a new terminal, start the controller with the matching topology file:
+   ```bash
+   sudo python3 controller.py --topo=topologies/topo4/topology.json
    ```
-       $sudo python3 controller.py --topo=<path to the topology.json file you're using in the network>
+5. In the `hn` terminal, start the receiver:
+   ```bash
+   python3 receive.py
    ```
-   By default, **topo = topologies/topo4/topology.json**
-   
-6. In the hn's xterm, run the following command:
+6. In the `h1` terminal, send traffic:
+   ```bash
+   python3 send.py <destination-ip> <message> <number-of-packets>
    ```
-       #python3 receive.py
-   ```
-7. In the h1's xterm, run the following command:
-   ```
-       #python3 send.py <destination ip> <message> <number of packets>
-   ```
-8. Now, switch to the terminal where *controller.py* is running and you can see whether the rule enforcement was successfull or compromised.
+7. The controller terminal reports, per packet, whether rule enforcement was verified or a deviation was detected.
 
-## Test Results
+To clean up afterwards: `make stop && make clean`.
 
-The Rule Enforcement Verification works well and is able to detect any kind of deviations and unauthorized access. The following table shows the average time in **ms** taken by REV algorithm to verify the rule enforcement taken over different topologies.
+## Results
 
-| Number of switches in topology | Average time taken in ms |
-| ------------------------------ | ------------------------ |
-| 2                              | 18.73                    |
-| 4                              | 25.45                    |
-| 6                              | 27.81                    |
-| 8                              | 30.52                    |
-| 10                             | 31.22                    |
-| 16                             | 36.88                    |
-| 32                             | 91.43                    |
+Average time for REV to verify rule enforcement, by topology size:
 
-![REV Verification Results](rev/Performance-Analysis-of-REV.png)
+| Switches in topology | Average verification time (ms) |
+| -------------------: | -----------------------------: |
+| 2                    | 18.73                          |
+| 4                    | 25.45                          |
+| 6                    | 27.81                          |
+| 8                    | 30.52                          |
+| 10                   | 31.22                          |
+| 16                   | 36.88                          |
+| 32                   | 91.43                          |
+
+![REV verification time by topology size](rev/Performance-Analysis-of-REV.png)
+
+## Citation
+
+If you use this implementation, please cite the original REV paper:
+
+```bibtex
+@article{zhang2020rev,
+  author  = {P. Zhang and H. Wu and D. Zhang and Q. Li},
+  title   = {Verifying Rule Enforcement in Software Defined Networks with {REV}},
+  journal = {IEEE/ACM Transactions on Networking},
+  volume  = {28},
+  number  = {2},
+  pages   = {917--929},
+  year    = {2020}
+}
+```
+
+## License
+
+Code in `rev/` is released under the [MIT License](LICENSE).
+
+The helper scripts in `utils/` are taken from [p4lang/tutorials](https://github.com/p4lang/tutorials), © Barefoot Networks, Inc. and Open Networking Foundation, and remain under the [Apache License 2.0](utils/LICENSE). Their original copyright headers are retained in each file.
 
 ## Contact
-Implemented by Devansh Garg - feel free to conatct me!
-gargdevansh1806@gmail.com
+
+Devansh Garg — gargdevansh1806@gmail.com
